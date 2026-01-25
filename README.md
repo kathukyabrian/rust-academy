@@ -234,8 +234,42 @@ fn main() {
 ```
 - useful when you know the number of elements will not need to change.
 
-### Functions
+## Understanding Ownership
+- most unique feature of the language
+- enables Rust to make memory safety guarantees without needing a garbage collector
 
-### Comments
+### What is Ownership?
+- set of rules that govern how Rust manages memory
+- some languages have garbage collectors that regularly look for no-longer used memory as the program runs
+- in other languages, the programmer must explicitly allocate and free the memory
+- Rust uses a third approach - memory is managed through a system of ownership with a set of rules that the compiler checks - if any of the rules are violated, the program won't compile.
 
-### Control Flow
+### The stack and the heap
+- both are parts of memory available to your code to use at runtime but they are structured in different ways.
+
+#### stack
+- the stack stores values in the order it gets them and removes the values in the opposite order(FILO)
+- data stored on the stack must have a known fixed size
+- data with an unknown size at compile time or a size that might change must be stored in the heap instead.
+
+#### heap
+- less organized 
+- when you put data on the heap, you request a certain amount of space.
+- the memory allocator finds an empty spot in the heap that is big enough, marks it as being in use and returns a __pointer__ - the address of the location - this process is called allocating on the heap
+- because the pointer to the heap is known, fixed size, you can store the pointer on the stack, but when you want the actual data you must follow the pointer
+
+#### cont'd
+- pushing to the stack is faster than allocation on the heap because the allocator never has to search for a place to store new data.
+- allocating space on the heap requires more work because the allocator must first find a big enough space to hold the data and then perform bookkeeping to prepare for the next allocation.
+- accessing data on the heap is generally slower than accessing data on the stack because you have to follow a pointer to get there.
+
+#### concept
+- when your code calls a function, the values passed into the function and the function's local variables get pushed onto the stack
+- when the function is over, those values get popped off the stack.
+
+### Ownership rules
+1. each value in Rust has an owner.
+1. there can only be one owner at a time.
+1. when the owner goes out of scope, the value will be dropped.
+
+### Variable Scope
