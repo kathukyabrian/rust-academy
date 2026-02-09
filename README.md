@@ -444,3 +444,92 @@ fn calculate_length(s: String) -> (String, usize){
 ```
 
 ##### Solution 2: References
+
+### References and Borrowing
+- a reference is like a pointer in that it's an address we can follow to access the data stored at that address
+- unlike a pointer, a reference is guaranteed to point to a valid value for a particular type for the life of that reference
+- here's how calculate_length() could be refactored using a reference instead of taking ownership of the value
+
+```rust
+fn main() {
+    let s1 = String::from("hello");
+
+    let len = calculate_length(&s1);
+
+    println!("The length of '{s1}' is {len}.");
+}
+
+fn calculate_length(s: &String) -> usize{
+    s.len();
+}
+```
+
+- the ampersands represent references and they allow you to refer to some value without taking ownership of it.
+- we call the action of creating a reference __borrowing__
+- __what happens when we try to modify something that we borrowed?__
+
+```rust
+fn main() {
+    let s = String::from("hello");
+
+    change(&s);
+}
+
+fn change(some_string: &String){
+    some_string.push_str(", world");
+}
+```
+- this will cause an error - just as variables are immutable by default, so are references.
+
+#### Mutable References
+```rust
+fn main() {
+    let mut s = String::from("hello");
+
+    change(&mut s);
+}
+
+fn change(some_string: &mut String){
+    some_string.push_str(", world");
+}
+```
+- mutable references have 1 big restriction - __if you have a mutable reference to a value, you can have no other references to that value__
+
+```rust
+let mut s = String::from("hello");
+
+let r1 = &mut s;
+let r2 = &mut s;
+
+println!("{r1}, {r2}");
+```
+
+- this will cause an error because we are referencing the same variable twice.
+- the reason for this restriction is so that Rust can prevent data races at compile time. a __data race__ is similar to a race condition and happens when these 3 behaviours occur
+    - two or more pointers access the same data at the same time
+    - at least one of the pointers is being used to write to the data
+    - there's no mechanism being used to synchronize access to the data
+- multiple immutable references are allowed because no one who is just reading the data has the ability to affect anyone else's reading of the data.
+- NOTE: a reference's scope starts from where it is introduces and continues through the last time that reference is used
+
+```rust
+let mut s = String::from("hello");
+
+let r1 = &s; // immutable reference
+let r2 = &s; // immutable reference
+println!("{r1} and {r2}");
+// variable r1 and r2 will not be used after this point
+
+let r3 = &mut s; // no problem
+println!("{r3}");
+```
+
+#### Dangling References
+- in languages with pointers, it is easy to create a __dangling pointer__
+- a dangling pointer is a pointer that references a location in memory that may have been given to someone else - by freeing some memory while preserving a pointer to that memory
+- in Rust, the compiler guarantees that references will never be dangling reference
+- if you have a reference to some data, the compiler will ensure that the data will not go out of scope before the reference to the data does.
+
+#### Rules of Reference
+- at any given time, you can have either one mutable reference or any number of immutable references
+- references must always be valid
