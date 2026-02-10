@@ -533,3 +533,52 @@ println!("{r3}");
 #### Rules of Reference
 - at any given time, you can have either one mutable reference or any number of immutable references
 - references must always be valid
+
+### The Slice Type
+- slices let you reference a contiguous sequence of elements in a collection.
+- a slice is a kind of reference - it does not have ownership
+
+#### String Slices
+- reference to a contiguous sequence elements of a String and it looks like this
+
+```rust
+let s = String::from("hello world");
+// h - 0
+// e - 1
+// l - 2
+// l - 3
+// o - 4
+//   - 5
+// w - 6
+// o - 7
+// r - 8
+// l - 9 
+// d - 10
+
+let hello = &s[0..5];
+let world = &s[6..11];
+```
+
+- rather than a reference to the entire string, hello is a reference to a portion of the String  specified in the extra [0..5] bit in the form of [starting_index..ending_index], where starting index of the first position in the slice and ending_index is one more than the last position in the slice
+- internally, the slice data structure stores the starting position and the length of the slice which corresponds to ending_index - starting_index
+- if you want to start at index 0, you can drop the starting index i.e
+```rust
+let s = String::from("hello");
+
+let slice = &s[..2];
+```
+
+- if you want to end at the last element, you can also drop the ending index i.e
+```rust
+let s = String::from("hello");
+let slice = &s[3..];
+```
+
+- the type that signifies a string slice is written as __&str__
+
+#### String Literals as Slices
+- string literals are slices
+- this explains why they are immutable
+
+#### String Slices as Parameters
+- 
