@@ -580,5 +580,178 @@ let slice = &s[3..];
 - string literals are slices
 - this explains why they are immutable
 
-#### String Slices as Parameters
-- 
+
+## Using Structs to Structure Related Data
+### Defining and Instantiating Structs
+- to declare
+```rust
+struct User {
+    active: bool,
+    username: String,
+    email: String,
+    sign_in_count: u64,
+}
+```
+- to create an instance
+```rust
+fn main() {
+    let user1 = User {
+        active: true,
+        username: String::from("someusername"),
+        email: String::from("some@example.com"),
+        sign_in_count: 1,
+    };
+}
+```
+
+- to get a specific value, use the dot notation eg user1.email
+
+- if the instance is mutable, we can change a value by using the dot notation and assigning into a particular field.
+
+```rust
+fn main() {
+    let mut user1 = User {
+        active: true,
+        username: String::from("someusername"),
+        email: String::from("some@example.com"),
+        sign_in_count: 1,
+    };
+
+    user1.email = String::from("another@example.com");
+}
+```
+
+- NOTE: the entire instance must be mutable, Rust doesn't allow us to mark only certain fields as mutable/
+
+### Using the Field Init Shorthand
+```rust
+fn build_user(email: String, username: String) -> User {
+    User {
+        active: true,
+        username,
+        email,
+        sign_in_count: 1
+    }
+}
+```
+
+### Creating Instances with Struct Update Syntax
+- helps in creating a struct from another of the same type then changing a few fields
+```rust
+fn main() {
+    let user2 = User {
+        email: String::from("another@example.com"),
+        ..user1
+    };
+}
+```
+- the __..user1__ myst come last to specify that any remaining fields should get their values from the corresponding fields in user1 
+
+### Creating Different Types with Tuple Structs
+
+```rust
+struct Color(i32, i32, i32);
+struct Point(i32, i32, i32);
+
+fn main() {
+    let black = Color(0, 0, 0);
+    let origin = Point(0, 0, 0);
+}
+```
+
+- the 2 structs Color and Point are of different types - they cannot be used for each other.
+- they can be destructured like so:
+```rust
+let Point(x,y,z) = origin;
+```
+
+### Defining Unit-Like Structs
+- you can define structs that don't have any fields!
+- can be useful when you need to implement a trait on some type but don't have any data that you want to store in the type itself.
+
+```rust
+struct AlwaysEqual;
+
+fn main() {
+    let subject = AlwaysEqual;
+}
+```
+
+### Ownership of Struct Data
+- in the User struct definition we used the owned String type rather than the &str string slice type
+- that was a deliberate choice since we want each instance of this struct to own all of its data and for the data to be valid for as long as the entire struct is valid.
+- it's also possible for structs to store references to data owned by something else, but to do use requires the use of __lifetimes__
+- lifetimes ensure that the data referenced by a struct is valid for as long as the Struct is
+- example
+```rust
+struct User {
+    active: bool,
+    username: &str,
+    email: &str,
+    sign_in_count: u64,
+}
+
+fn main() {
+    let user1 = User{
+        active: true,
+        username: "some@example.com",
+        email: "some@example.com",
+        sign_in_count: 1
+    };
+}
+```
+
+- the compiler will complain that it needs lifetime specifiers
+
+### Method Syntax
+```rust
+#[derive(Debug)]
+struct Rectangle {
+    width: u32,
+    height: u32,
+}
+
+impl Rectangle {
+    fn area(&self) -> u32 {
+        self.width * self.height
+    }
+}
+
+fn main() {
+    let rect = Rectangle{
+        width: 30,
+        height: 30,
+    };
+
+    println!("The area of the rectangle is {} square pixels", rect.area());
+}
+```
+
+- to define the function within the context of the Rectangle, we start an impl block for Rectangle.
+- everything within the impl block will be associated with the Rectangle type.
+- in the signature for area, we use &self instead of rectangle: &Rectangle.
+- the &self is actually short for self: &Self - it is a mandatory argument for such methods
+
+### Associated Functions
+- all functions defined within an impl block are called __associated functions__ because they are associated with the type named after the impl
+- we can define associated functions that don't have self as their first parameter because they don't need an instance of the type to work with
+- associated functions that aren't methods are often used for constructors that will return a new instance of the struct
+- these are often called new but ne isn't a special name and isn't inbuilt into the language
+
+```rust
+impl Rectangle {
+    fn square(size: u32) -> Self {
+        Self {
+            width: size,
+            height size,
+        }
+    }
+}
+```
+
+- the Self keywords in the return type and in the body of the function are aliases of the type that appears after the impl keyword which in this case is Rectangle
+- to call this associated function we use the :: syntax with the struct name
+
+```rust
+let sq = Rectangle::square(3);
+```
