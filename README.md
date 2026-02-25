@@ -755,3 +755,232 @@ impl Rectangle {
 ```rust
 let sq = Rectangle::square(3);
 ```
+
+## Enums and Pattern Matching
+### Defining an Enum
+- give you a way of saying a value is one of possible set of values
+```rust
+enum IpAddrKind {
+    V4,
+    V6,
+}
+```
+
+- to create instances
+```rust
+let four = IpAddrKind::V4;
+let six = IpAddrKind::V6;
+```
+
+- to use in a function
+```rust
+fn route(ip_kind: IpAddrKind){}
+```
+
+- enums can take an optional argument like so:
+```rust
+enum IpAddr{
+    V4(String),
+    V6(String),
+}
+
+let home = IpAddr::V4(String::from("127.0.0.1"));
+
+let loopback = IpAddr::V6(String::from("::1"));
+```
+- here, we attach data to each variant of the enum directly. the name of each enum variant that we define also becomes a function that constructs an instance of the enum
+- another advantage of using an enum is that each variant can have its own types and amounts of associated data. example:
+```rust
+enum IpAddr {
+    V4(u8, u8, u8, u8),
+    V6(String),
+}
+``` 
+- in this case an IPV4 addr could take four numeric components that have values between 0 and 255
+- just like we are able to define methods on structs, we can do the same on enums using __impl__
+
+```rust
+impl Message {
+    fn call(&self){
+
+    }
+}
+
+let m = Message::Write(String::from("hello"));
+
+m.call();
+```
+
+### The Option Enum
+- encodes the very common scenario in which a value could be something or it could be nothing.
+- an example: if you request the first item in a non-empty list, you would get a value.
+- if you request the first item in an empty list, you would get nothing.
+- Rust doesn't have the null feature that many other programming languages have. Null is a value that means there is no value there. In languages with null, variables can always be in one of two states, null or not null.
+- the problem with a null value is that if you try to use a null value as a non null value, you will get an error of some kind.
+- the way Rust treats this is with the Option enum which is defined as follows in the standard library
+```rust
+enum Option<T> {
+    None,
+    Some(T),
+}
+```
+- examples using Option:
+```rust
+let some_number = Some(5);
+let some_char = Some('c');
+
+let absent_number: Option<i32> = None;
+```
+- note that i32 and Option\<i32> are different types
+- the next question will be, how do we get the T from Option<T>
+- the short answer is that you will need code that handles each variant: Some<T> and None 
+- the __match__ expression is a contrl flow construct that does just this when used with enums 
+
+### The Match Control Flow Construct
+- much like the switch statement in other languages
+```rust
+enum Coin {
+    Penny, 
+    Nickel,
+    Dime, 
+    Quarter,
+}
+
+fn value_in_cents(coin: Coin) -> u8 {
+    match coin {
+        Coin::Penny => 1,
+        Coin::Nickel => 5,
+        Coin::Dime => 10,
+        Coin::Quarter => 25,
+    }
+}
+```
+
+#### Patterns that Bind to Values
+```rust
+#[derive(Debug)]
+enum UsState {
+    Alabama, 
+    Alaska,
+    // more
+}
+
+enum Coin {
+    Penny,
+    Nickel,
+    Dime,
+    Quarter(UsState),
+}
+```
+- From 1999 to 2008, the US minted quarters with different designs for each of the 50 states - no other coins got the state design - this can be represented as shown above
+- if we wanted to print the state from which a Quarter came from:
+```rust
+fn value_in_cents(coin: Coin) -> u8 {
+    match coin {
+        Coin::Penny => 1,
+        Coin::Nickel => 5,
+        Coin::Dime => 10,
+        Coin::Quarter(state) => {
+            println!("State quarter from {state:?}!");
+            25
+        }
+    }
+}
+```
+
+#### The Option<T> match Pattern
+```rust
+fn plus_one(x: Option<i32>) -> Option<i32> {
+    match x {
+        None => None,
+        Some(i) => Some(i + 1),
+    }
+}
+
+let five = Some(5);
+let six = plus_one(five);
+let none = plus_one(None);
+```
+
+#### Matches are Exhaustive
+- the arm's patterns must cover all possibilities
+- failure to do so will lead to an error
+
+#### Catch All Patterns and the _ Placeholder
+- sometimes we have specific matches that need to do sth specific and maybe all other matches to do the same thing
+- example
+
+```rust
+let dice_roll = 9;
+
+match dice_roll {
+    3 => add_fancy_hat(),
+    7 => remove_fancy_hat(),
+    other => move_player(other),
+}
+
+fn add_fancy_hat(){}
+
+fn remove_fancy_hat(){}
+
+fn move_player(num_spaces: u8){}
+```
+
+- we have 2 special arms for 3 and 7 and an __other__ arm that will match anything else - in this case the match is still exhaustive 
+- please note that we have to put the catch-all arm last because the patterns are evaluated in order
+- Rust has a pattern we can use if we want a catch-all but don't want to use the value in the catch-all pattern - the pattern is *_*
+
+```rust
+let dice_roll = 9;
+match dice_roll {
+    3 => add_fancy_hat(),
+    7 => remove_fancy_hat(),
+    _ => reroll(),
+}
+
+fn add_fancy_hat() {}
+fn remove_fancy_hat() {}
+fn reroll() {}
+```
+
+### Concise Control with if let and let...else
+- the __if let__ syntax lets you combine if and let into a less verbose way to handle values that match one pattern while ignoring the rest. consider this program
+```rust
+let config_max = Some(3u8);
+
+match config_max {
+    Some(max) => println!("The maximum value is configured to be {max}"),
+    _ => (),
+}
+```
+- if the value is Some, we print out the value in the Some variant by binding the value to the variable max in the pattern; we don't want to do anything with the None value
+- we've had to add an handler for the None which is some boilerplate
+- this can be rewritten using __if let__
+```rust
+let config_max = 3u8;
+if let Some(max) = config_max {
+    println!("The maximum is configured to be {max}");
+}
+```
+- the syntax if let takes a pattern and an expression separated by an equal sign - it works the same way as match where the expression is given to the match and the pattern is the first arm
+- the code in the if let only runs if the value matches the pattern
+- we can include an __else__ with an __if let__. the block of code that goes with the else is the same that would go with _
+
+```rust
+let mut count = 0;
+match coin {
+    Coin::Quarter(state) => println!("State Quarter from {state:?}!"),
+    _ => count += 1;
+}
+```
+
+- this can be written as
+```rust
+let mut count = 0;
+
+if let Coin::Quarter(state) = coin {
+    println!("State Quarter from {state:?}!");
+}else{
+    count += 1;
+}
+```
