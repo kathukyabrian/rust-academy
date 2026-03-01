@@ -984,3 +984,95 @@ if let Coin::Quarter(state) = coin {
     count += 1;
 }
 ```
+
+## Common Collections
+- unlike the builtin array and tuple types, data stored in these collections resides in the heap - this means that the amount of data that is stored doesn't have to be known at compile time - it can grow/shrink as the program runs
+- 3 types to be discussed
+    - vector -> allows you to store a variable number of values next to each other
+    - string -> a collection of characters
+    - hash map -> allows you to associate a value with a specific key
+
+### Storing Lists of Values with Vectors
+- allow you to store more than one value in a single data structure that puts all the values next to each other in memory
+- vectors can only store values of the same type
+
+#### Creating a New Vector
+```rust
+let v: Vec<i32> = Vec::new();
+```
+- vectors are implemented using generics
+- vectors can be created with initial values
+```rust
+let v = vec![1,2,3];
+```
+
+#### Updating a Vector
+```rust
+let mut v = Vec::new();
+v.push(5);
+v.push(6);
+v.push(7);
+v.push(8);
+```
+
+#### Reading Elements of Vectors
+- there are 2 ways:
+    - indexing
+    - using get method
+```rust
+let vec = vec![1,2,3,4,5];
+let third: &i32 = &v[2];
+println!("The third element is {third}");
+
+let third: Option<&i32> = v.get(2);
+match third {
+    Some(third) => println!("The third element is {third}"),
+    None => println!("There is no third element"),
+} 
+```
+- when we use the get option, we get an Option<&T> that we can use with match
+- the 2 ways are provided so that you can choose how a program behaves when you try to use an index value outside the range of existing elements    
+
+```rust
+let v = vec![1,2,3,4,5];
+
+let does_not_exist = &v[100];
+let does_not_exist = v.get(100);
+```
+- when we run this program, the first example will cause the program to panic because it references a nonexistent element - best option if you want your application to crash
+- the second example would match the None case without crashing
+
+#### Iterating Over the Values in a Vector
+```rust
+let v = vec![100,32,57];
+for i in &v {
+    println("{i}");
+}
+```
+
+- we can also iterate through mutable references 
+```rust
+let mut v = vec![100, 32, 57];
+for i in &mut v {
+    *i += 50;
+}
+```
+
+#### Using an Enum to Store Multiple Types
+- vectors can only store values that are of the same type
+- for this we can use enums
+```rust
+enum SpreadSheetCell {
+    Int(i32),
+    Float(f64),
+    Text(String),
+}
+
+let row = vec![
+    SpreadSheetCell::Int(3),
+    SpreadSheetCell::Text(String::from("hello")),
+    SpreadSheetCell::Float(10.12),
+]
+```
+
+- all elements are of type __enum SpreadSheetCell__
