@@ -1188,3 +1188,115 @@ for b in "Зд".bytes() {
     println!("{b}");
 }
 ```
+
+### Storing Keys with Associated Values in Hash Maps
+- stores a mapping of keys of type K to values of type V using a hashing function, which determines how it places these keys and values into memory
+
+#### Creating a New Hash Map
+```rust
+use std::collections::HashMap;
+
+let mut scores = HashMap::new();
+
+scores.insert(String::from("Blue"), 10);
+scores.insert(String::from("Yellow"), 50);
+```
+- note: we need to import the HashMap - it is not brought up to the prelude automatically
+- all keys must have the same type; the same for values
+
+#### Accessing Values in a Hash Map
+```rust
+use std::collections::HashMap;
+
+let mut scores = HashMap::new();
+
+scores.insert(String::from("Blue"), 10);
+scores.insert(String::from("Yellow"), 50);
+
+let team_name = String::from("Blue");
+let score = scores.get(&team_name).copied().unwrap_or(0);
+```
+- the get method returns an Option<&V>, if there's no value for that key in the hash map, get will return None
+- this program handles the Option by calling copied to get an Option<i32> rather than an Option<&i32>, then unwrap_or to set score to 0 if scores doesn't have an entry for the key.
+
+---
+- we can iterate over each key-value pair
+```rust
+use std::collections::HashMap;
+
+let mut scores = HashMap::new();
+
+scores.insert(String::from("Blue"), 10);
+scores.insert(String::from("Yellow"), 50);
+
+for(key, value) in &scores {
+    println!("{key} : {value}");
+}
+```
+
+#### Managing Ownership in Hash Maps
+- for types that implement the Copy trait like i32, the values are copied into the hashmap
+- for owned values like String, the values will be moved and the hashmap will be the owner of those values
+```rust
+use std::collections::HashMap;
+
+let field_name = String::from("Favourite color");
+let field_value = String::from("Blue");
+
+let mut map = HashMap::new();
+map.insert(field_name, field_value);
+// field_name and field_value are invalid at this point - they have been moved into the HashMap
+```
+
+#### Updating a HashMap
+- when you want to change the data in a hash map, you have to decide how to handle the case when a key already has a value assigned 
+    - you could replace the old value with the new value, completely disregarding the old value
+    - you could keep the old value and ignore the new value, only adding the new value if the key doesn't already have a value
+
+##### Overwriting a value
+```rust
+use std::collections::HashMap;
+
+let mut scores = HashMap::new();
+
+scores.insert(String::from("Blue"), 10);
+scores.insert(String::from("Blue"), 25);
+
+println!("{scores:?}");
+
+```
+
+##### Adding a Key and Value Only If a Key Isn’t Present
+```rust
+use std::collections::HashMap;
+
+let mut scores = HashMap::new();
+scores.insert(String::from("Blue"), 10);
+
+scores.entry(String::from("Yellow")).or_insert(50);
+scores.entry(String::from("Blue")).or_insert(50);
+
+println!("{scores:?}");
+
+```
+
+
+##### Updating a Value Based on the Old Value
+
+```rust
+use std::collections::HashMap;
+
+let text = "hello world wonderful world";
+
+let mut map = HashMap::new();
+
+for word in text.split_whitespace() {
+    let count = map.entry(word).or_insert(0);
+    *count += 1;
+}
+
+println!("{map:?}");
+
+```
+
+## Error Handling
