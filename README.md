@@ -1076,3 +1076,115 @@ let row = vec![
 ```
 
 - all elements are of type __enum SpreadSheetCell__
+
+### Storing UTF-8 Encoded Text with Strings
+#### Defining Strings
+- Rust has only 1 string type in the core language, which is the string slice __str__ that is usually seen in its borrowed from &str
+
+#### Creating a New String
+```rust
+let mut s = String::new();
+```
+- this creates a new empty string called s, into which we can then load data
+- if we have initial data with which we want to start the string, we can use __to_string__ method
+```rust
+let data = "initial contents";
+
+let s = data.to_string();
+
+let s = "initial contents".to_string();
+```
+
+- the above code is the same as
+```rust
+let s = String::from("initial contents");
+```
+- strings are UTF-8 encoded
+
+#### Updating a String
+- a string can grow in size and contents can change
+
+##### Appending with push_str or push
+```rust
+let mut s = String::from("foo");
+s.push_str("bar");
+```
+- the push_str method takes a string slice because we don't necessarily want to take ownership of the parameter
+
+- the push method takes a single character as parameter and adds it to the String
+```rust
+let mut s = String::from("lo");
+s.push('l');
+```
+
+##### Concatenating with + or format!
+- if you want to combine 2 existing strings, you can use the + operator
+
+```rust
+let s1 = String::from("Hello, ");
+let s2 = String::from("world!");
+let s3 = s1 + &s2; // s1 has been moved here and can no longer be used
+```
+- so why did we move s1 and used a reference for s2?:
+    - this has to do with the signature of the method that's called when we use the + operator, it used the add method whose signature looks like
+    ```rust
+    fn add(self, s:&str) -> String {}
+    ```
+- format syntax is more readable
+```rust
+let s1 = String::from("tic");
+let s2 = String::from("tac");
+let s3 = String::from("toe");
+let s = format!("{s1}-{s2}-{s3}");
+```
+- the format macro works luke println! but instead of printing the output, it returns a string with the contents
+
+#### Indexing into Strings
+- in many other programming languages, accessing individual characters by referencing them by index is a valid and common operation
+- we don't do that here, if you attempt you will get an error
+
+##### Internal Representation
+- A String is a wrapper over a Vec<u8>
+- example
+```rust
+let hello = String::from("Hola");
+```
+- in this case, len will be 4 which means that the vector stroing the string is 4 bytes long - each letter takes 1 byte when encoded in UTF-8
+- the following line is not the same case
+```rust
+let hello = String::from("Здравствуйте");
+```
+- these are not 12 bytes, they are 24 - this is because each unicode scalar value in that string takes 2 bytes of storage
+- therefore, an index into the string's bytes will not always correlate to a valid Unicode scalar value. consider this
+```rust
+let hello = String::from("Здравствуйте");
+let answer = &hello[0];
+```
+- when encoded in UTF-8, the first byte of the first character(3) is 208 and the second is 151 - so it would seem that the answer should infact be 208, but 208 is not a valid character on its own
+- therefore, to avoid returning unexpected value and causing bugs that might not be discovered immediately, Rust doesn't compile string indexing
+- another reason Rust doesn't allow us to index a String to get a character is that indexing operations are expected to always take constant time (O(1)) - it is not possible to guarantee that performance with a String because Rust would have to walk through the contents to determine how many valid characters are there.
+
+#### Slicing Strings
+- rather than indexing using [] with a single number, you can use [] with  a range to create a string slice containing particular bytes
+```rust
+let hello = String::from("Здравствуйте");
+let s = &hello[0..4]; // because each character is 2 bytes, we shall only get the first 2 characters
+```
+- here, s will be a &str that contains the first 4 bytes of the string - earlier we mentioned that each of these characters was 2 bytes, which means s will be __Зд__
+
+#### Iterating Over Strings
+- the best way is to be explicit on whether we want characters or bytes
+- for individual unicode scalar values, use the chars method
+
+```rust
+for c in "Зд".chars() {
+    println!("{c}");
+}
+```
+
+- alternatively, the bytes method returns each raw byte
+```rust
+for b in "Зд".bytes() {
+    println!("{b}");
+}
+```
