@@ -1300,3 +1300,201 @@ println!("{map:?}");
 ```
 
 ## Error Handling
+- deals with issues when something goes wrong
+- errors are grouped into 2:
+    - recoverable
+    - unrecoverable
+- recoverable errors like a file not found error can be fixed by for example asking the user to reupload the file
+- unrecoverable errors are usually bugs that would require the program to be stopped
+- most languages don't distinguish between these two kind of errors and handle both in the same way using mechanisms such as exceptions
+- Rust doesn't have exceptions - instead it has the type Result<T,E> for recoverable errors and the panic! macro that stops execution when the program encounters an unrecoverable errors
+
+### Unrecoverable Errors with panic!
+- sometimes bad things happen and there's nothing you can do about it.
+- in this case, rust has a __panic!__ macro
+- there are 2 ways to cause a panic in practice:
+    - by taking an action that causes our code to panic eg accessing an array past the end
+    - by explicitly calling the panic! macro
+- in both cases, we cause a panic
+- by default, these panics will print a failure message, unwind, clean up the stack and quit
+- via an env variable, you can have rust display the call stack when a panic occurs to make it easier to track down the source of the panic.
+
+#### What exactly is this unwinding process
+- when a panic occurs, the program starts unwinding
+    - rust walks back up the stack and cleans up the data from each function it encounters - this proess of cleaning up is a lot of work - rust therefore allows you to choose the alternative of immediately aborting which ends the program without cleaning up
+- memory that the program was using will then need to be cleaned up by the os
+- if in your project, you need to make the resultant binary as small as possible, you can switch from unwinding to aborting upon a panic by adding panic = 'abort' to the appropriate [profile] sections in your Cargo.toml file eg
+```toml
+[profile.release]
+panic = 'abort'
+```
+
+```rust
+fn main() {
+    panic!("crash and burn");
+}
+```
+- in this case, the panic log is in our code, sometimes it will not
+- in such a case we can use the backtrace of the function
+```rust
+fn main() {
+    let v = vec![1,2,3];
+    v[99];
+}
+```
+- in this case, the program will panic because the vector only has 3 elements but we are trying to access the 100th element
+- in C, attempting to read beyond the end of a data structure is undefined behavior - you might get whatever is at the location in memory that would correspond to that element in the data structure - even though the memory doesn't belong to that structure - this is called a __buffer overread__ and can lead to security vulnerabilities if an attacker is able to manipulate the index in such a way as to read data they shouldn't be allowed to that is stored after the data structure
+- Rust tries to fix this problem by failing
+
+- with backtrace, we are able to see the complete steps that led to the error
+
+### Recoverable Errors with Result
+- not all errors are serious enough to require the program to stop entirely
+- we have a Result enum that is defined as follows
+```rust
+enum Result<T, E> {
+    Ok(T),
+    Err(E),
+}
+```
+- T and E are generic type parameters - T represents the type that will be returned in success cases while E represents the type of the error that will be returned in a failure case within the Err variant
+- lets attempt calling a function that returns a Result value because the function could fail
+
+```rust
+use std::fs::File;
+
+fn main() {
+    let greeting_file_result = File::open("hello.txt");
+}
+```
+
+- the return type of File::open is a Result<T, E>. 
+- the generic parameter T has been filled by the implementation of File::open with the type of the success value __std::fs:File__ which is a file handle
+- the type of E used in the error value is __std::io::Error__
+- so this mean that the call to File::open might succeed and return a file handle that we can read from and write to and that the function might also fail 
+- if the File::open call succeeds, the value in the greeting_file_result will be an instance of Ok that contains a file handle while if it is an error the value in greeting_file_result will be an instance of Err that contains more information about the kind of error that occurred.
+- we need to use match to handle the 2 cases, Ok and Err
+```rust
+use std::fs::File;
+
+fn main() {
+    let greeting_file_result = File::open("hello.txt");
+
+    let greeting_file = match greeting_file_result {
+        Ok(file) => file,
+        Err(error) => panic!("Problem opening the file: {error:?}"),
+    }
+}
+```
+
+- for specific error handling, we can match the error also
+```rust
+use std::fs::File;
+use std::io::ErrorKind;
+
+fn main() {
+    let greeting_file_result = File::open("hello.txt");
+
+    let greeting_file = match greeting_file_result {
+        Ok(file) => file,
+        Err(error) => match error.kind() {
+            ErrorKind::NotFound => match File::create("hello.txt") {
+                Ok(fc) => fc,
+                Err(e) => panic!("Problem creating the file: {e:?}"),
+            },
+            _ => {
+                panic!("Problem opening the file: {error:?}");
+            }
+        },
+    };
+}
+```
+- Error is a struct provided by the standard library - it has method kind that we can call to get an io::ErrorKind value
+- the enum io::ErrorKind is an enum provided by the std library and has variants representing the different kind of errors that might result from an io operation
+- the issue with the above example is that there's a lot of match - the solution to this is using closures
+
+```rust
+use std::fs::File;
+use std::io::ErrorKind;
+
+fn main() {
+    let greeting_file = File::open("hello.txt").unwrap_or_else(|error| {
+        if error.kind() == ErrorKind::NotFound {
+            File::create("hello.txt").unwrap_or_else(|error| {
+                panic!("Problem creating the file: {error:?}");
+            })
+        } else {
+            panic!("Problem opening the file: {error:?}");
+        }
+    });
+}
+```
+
+#### Shortcuts for Panic on Error
+- there is a shortcut called unwrap()
+- if the Result of the value is the Ok variant, unwrap will return the value inside the Ok and if it is the Err variant, it will call the panic! macro
+```rust
+use std::fs::File;
+
+fn main() {
+    let greeting_file = File::open("hello.txt").unwrap();
+}
+```
+
+- there's a method called expect() that lets us choose the panic! error message
+
+```rust
+use std::fs::File;
+
+fn main() {
+    let greeting_file = File::open("hello.txt")
+        .expect("hello.txt should be included in this project");
+}
+```
+
+- in production-quality code, Rustaceans prefer .expect over .unwrap to give more context about why the operation is expected to always succeed
+
+#### Propagating Errors
+- when a function's implementation calls something that might fail, instead of handling the error within the function itself, you can return the error to the calling code so that it can decide what to do - this is known as __propagating__ the error and gives control to the calling method.
+
+```rust
+use std::fs::File;
+use std::io::{self, Read};
+
+fn read_username_from_file() -> Result<String, io::Error> {
+    let username_file_result = File::open("hello.txt");
+
+    let mut username_file = match username_file_result {
+        Ok(file) => file,
+        Err(e) => return Err(e),
+    };
+
+    let mut username = String::new();
+    match username_file.read_to_string(&mut username) {
+        Ok(_) => Ok(username),
+        Err(e) => Err(e),
+    }
+}
+```
+
+#### The ? Operator Shortcut
+```rust
+use std::fs::File;
+use std::io::{self, Read};
+
+fn read_username_from_file() -> Result<String, io::Error> {
+    let mut username_file = File::open("hello.txt")?;
+    let mut username = String::new();
+    username_file.read_to_string(&mut username)?;
+    Ok(username)
+}
+```
+- works the same as the match
+- eliminates the boiler plate
+- to use it, the return type of the function has to be Result<T, E>
+
+### To panic! or Not to panic!
+#### Guidelines
+- advisable to panic when its possible your code could end up in a bad state
+    -  a bad state is when some assumption, guarantee, contract or invariant has been broken
+- panic! is often appropriate when you're calling external code that is out of your control and returns an invalid state that you have no way of fixing
