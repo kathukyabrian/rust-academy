@@ -1498,3 +1498,435 @@ fn read_username_from_file() -> Result<String, io::Error> {
 - advisable to panic when its possible your code could end up in a bad state
     -  a bad state is when some assumption, guarantee, contract or invariant has been broken
 - panic! is often appropriate when you're calling external code that is out of your control and returns an invalid state that you have no way of fixing
+
+## Generic Types, Traits and Lifetimes
+- functions can take parameters of a generic type instead of a concrete type like i32 or String -> __generics__
+- __traits__ define behaviour in a generic way. you can combine traits with generic types to constrain a generic type to accept only those types that have a particular behavior as opposed to just any type
+- __lifetimes__ are a variety of generics that give the compiler information about how references relate to each other - lifetimes allow us to give the compiler enough info about borrowed values so that it can ensure that references will be valid in more situations than it could without our help
+
+
+### Removing Duplication by Extracting a Function
+- consider
+```rust
+fn main() {
+    let number_list = vec![34, 40, 25, 100, 65];
+
+    let mut largest = &number_list[0];
+
+    for number in &number_list {
+        if number > largest {
+            largest = number;
+        }
+    }
+
+    println!("The largest number is {largest}");
+}
+```
+
+- function checks the largets number in the list
+
+- if we are asked to check for the largest number in another list, we could change it to:
+```rust
+fn main() {
+    let number_list = vec![34, 50, 25, 100, 65];
+
+    let mut largest = &number_list[0];
+
+    for number in &number_list {
+        if number > largest {
+            largest = number;
+        }
+    }
+
+    println!("The largest number is {largest}");
+
+    let number_list = vec![102, 34, 6000, 89, 54, 2, 43, 8];
+
+    let mut largest = &number_list[0];
+
+    for number in &number_list {
+        if number > largest {
+            largest = number;
+        }
+    }
+
+    println!("The largest number is {largest}");
+}
+```
+
+- this code works but there's a problem - it is duplicated - tedious and error-prone
+- to eliminate this problem we will create an abstraction 
+
+```rust
+fn largest(list: &[i32]) -> &i32 {
+    let mut largest = &list[0];
+
+    for item in list {
+        if item > largest {
+            largest = item;
+        }
+    }
+
+    largest
+}
+
+fn main() {
+    let number_list = vec![34, 50, 25, 100, 65];
+
+    let result = largest(&number_list);
+    println!("The largest number is {result}");
+
+    let number_list = vec![102, 34, 6000, 89, 54, 2, 43, 8];
+    let result = largest(&number_list);
+    println!("The largest number is {result}");
+}
+```
+
+- this works well, we have separated what changes from what does not - this can be achieved better with generics
+
+### Generic Data Types
+#### In Function Definitions
+- assuming we have 2 functions, 1 that gets the largest i32 and another that gets the largest character as such:
+```rust
+fn largest_i32(list: &[i32]) -> &i32 {
+    let mut largest = &list[0];
+
+    for item in list {
+        if item > largest {
+            largest = item;
+        }
+    }
+
+    largest
+}
+
+fn largest_char(list: &[char]) -> &char {
+    let mut largest = &list[0];
+
+    for item in list {
+        if item > largest {
+            largest = item;
+        }
+    }
+
+    largest
+}
+
+fn main() {
+    let number_list = vec![34,50,25,100,65];
+    let result = largest_i32(&number_list);
+    println("The largest number is {result}");
+
+    let char_list = vec!['y', 'm', 'a', 'q'];
+    let result = largest_char(&char_list);
+    println("The largest char is {result}");
+}
+```
+
+- the function bodies have the same code so we can eliminate this duplication
+```rust
+fn largest<T>(list: &[T]) -> &T{
+    let mut largest = &list[0];
+
+    for item in list {
+        if item > largest {
+            largest = item;
+        }
+    }
+
+    largest
+}
+
+fn main() {
+    let number_list = vec![34, 50, 25, 100, 65];
+
+    let result = largest(&number_list);
+    println!("The largest number is {result}");
+
+    let char_list = vec!['y', 'm', 'a', 'q'];
+
+    let result = largest(&char_list);
+    println!("The largest char is {result}");
+}
+```
+
+- if we compile this code, we will get an error
+```rust
+$ cargo run
+   Compiling chapter10 v0.1.0 (file:///projects/chapter10)
+error[E0369]: binary operation `>` cannot be applied to type `&T`
+ --> src/main.rs:5:17
+  |
+5 |         if item > largest {
+  |            ---- ^ ------- &T
+  |            |
+  |            &T
+  |
+help: consider restricting type parameter `T` with trait `PartialOrd`
+  |
+1 | fn largest<T: std::cmp::PartialOrd>(list: &[T]) -> &T {
+  |             ++++++++++++++++++++++
+
+For more information about this error, try `rustc --explain E0369`.
+error: could not compile `chapter10` (bin "chapter10") due to 1 previous error
+```
+- the help text mentions ```std::cmp::PartialOrd``` which is a trait
+- this means that the body of largest might not work for all possible types of T
+- because we will be comparing values of type T in the body, we can only use types whose values can be ordered
+- the solution in this case is to restrict the types valid for T to only those that implement ```PartialOrd```
+
+#### In Struct Definitions
+```rust
+struct Point<T> {
+    x: T,
+    y: T,
+}
+
+fn main() {
+    let integer = Point{x : 5, y: 10};
+    let float = Point{ x: 1.0, y: 4.0};
+}
+```
+- like in the above case, the values of x and y have to be of the same type. if that is not the case, the code will fail.
+- support for multiple generic types exist
+```rust
+struct Point<T, U> {
+    x: T,
+    y: U,
+}
+
+fn main() {
+    let both_integer = Point {x: 5, y: 10};
+    let both_float = Point {x: 1.0, y: 4.0};
+    let integer_and_float = Point { x: 5, y: 4.0};
+}
+```
+
+#### In Enum Definitions
+```rust
+// example 1
+enum Option<T> {
+    Some(T),
+    None,
+}
+
+// example 2
+enum Result<T, E>{
+    Ok(T),
+    Err(E),
+}
+```
+#### In Method Definitions
+```rust
+struct Point<T> {
+    x: T,
+    y: T,
+}
+
+impl<T> Point<T> {
+    fn x(&self) -> &T {
+        &self.x
+    }
+}
+
+fn main() {
+    let p = Point { x: 5, y: 10 };
+
+    println!("p.x = {}", p.x());
+}
+```
+
+#### Performance of Code Using Generics
+- doesn't make code run slower that it could with concrete types
+- rust achieves this by doing __monomorphization__ of the code using generics at compile time
+- monomorphization is the process of turning generic code into specific code by filling in the concrete types that are used when compiled
+- assuming we have such code
+```rust
+let integer = Some(5);
+let float = Some(5.0);
+```
+
+- the following could be generated:
+```rust
+enum Option_i32 {
+    Some(i32),
+    None,
+}
+
+enum Option_f64 {
+    Some(f64),
+    None,
+}
+
+fn main() {
+    let integer = Option_i32::Some(5);
+    let float = Option_f64::Some(5.0);
+}
+```
+
+### Defining Shared Behavior with Traits
+- traits are like interfaces in other programming languages
+
+#### Defining a Trait
+```rust
+pub trait Summary {
+    fn summarize(&self) -> String;
+}
+```
+
+#### Implementing a Trait on a Type
+```rust
+pub struct NewsArticle {
+    pub headline: String,
+    pub location: String,
+    pub author: String,
+    pub content: String,
+}
+
+impl Summary for NewsArticle {
+    fn summarize(&self) -> String {
+        format!("{}, by {} ({})", self.headline, self.author, self.location)
+    }
+}
+
+pub struct SocialPost {
+    pub username: String,
+    pub content: String,
+    pub reply: bool,
+    pub repost: bool,
+}
+
+impl Summary for SocialPost {
+    fn summarize(&self) -> String {
+        format!("{}: {}", self.username, self.content)
+    }
+}
+```
+
+- assuming that the trait was under an aggregator crate, we can use it this way:
+```rust
+use aggregator::{SocialPost, Summary};
+
+fn main() {
+    let post = SocialPost {
+        username: String::from("horse_ebooks"),
+        content: String::from(
+            "of course, as you probably already know, people",
+        ),
+        reply: false,
+        repost: false,
+    };
+
+    println!("1 new post: {}", post.summarize());
+}
+```
+
+#### Using Default Implementations
+- sometimes its useful to have default behaviour for some or all methods in a trait instead of requiring implemenations for all methods
+- in such cases, the definition would look like this:
+```rust
+pub trait Summary {
+    fn summarize(&self) -> String {
+        String::from("(Read more...)")
+    }
+}
+```
+- to use the default implementation, we define an empty implementation
+```rust
+pub struct NewsArticle {
+    pub headline: String,
+    pub location: String,
+    pub author: String,
+    pub content: String,
+}
+
+impl Summary for NewsArticle {}
+
+use aggregator::{self, NewsArticle, Summary};
+
+fn main() {
+    let article = NewsArticle {
+        headline: String::from("Penguins win the Stanley Cup Championship!"),
+        location: String::from("Pittsburgh, PA, USA"),
+        author: String::from("Iceburgh"),
+        content: String::from(
+            "The Pittsburgh Penguins once again are the best \
+             hockey team in the NHL.",
+        ),
+    };
+
+    println!("New article available! {}", article.summarize());
+}
+```
+
+#### Using Traits as Parameters
+```rust
+pub fn notify(item: &impl Summary) {
+    println!("Breaking news! {}", item.summarize());
+}
+```
+- this accepts any type that implements the speficied trait
+- in the body of notify, we can call any methods that come from the specified trait eg summarize
+- any other type that doesn't implement summary is not allowed
+
+
+##### Trait Bound Syntax
+- the ```impl Trait``` syntax works for straight-forward cases but is actually syntax sugar for a longer form known as __trait bound__
+```rust
+pub fn notify<T: Summary>(item: &T) {
+    println!("Breaking news! {}", item.summarize());
+}
+```
+- this is the longer form of the example above
+- this works better for more complex cases because if we had 2 parameters, the shorter form discussed above would look like this:
+```rust
+pub fn notify(item1: &impl Summary, item2: &impl Summary) {}
+```
+- the longer format would look like:
+```rust
+pub fn notify<T: Summary>(item1: &T, item2: &T) {}
+```
+
+### Returning Types That Implement Traits
+```rust
+fn returns_summarizable() -> impl Summary {
+    SocialPost {
+        username: String::from("horse_ebooks"),
+        content: String::from(
+            "of course, as you probably already know, people",
+        ),
+        reply: false,
+        repost: false,
+    }
+}
+```
+- the ability to specify a return type only by the trait it implements is useful in the context of closures and iterators
+- limitation: you can use ```impl Trait``` if you are returning a single type. the example below wouldn't work
+```rust
+fn returns_summarizable(switch: bool) -> impl Summary {
+    if switch {
+        NewsArticle {
+            headline: String::from(
+                "Penguins win the Stanley Cup Championship!",
+            ),
+            location: String::from("Pittsburgh, PA, USA"),
+            author: String::from("Iceburgh"),
+            content: String::from(
+                "The Pittsburgh Penguins once again are the best \
+                 hockey team in the NHL.",
+            ),
+        }
+    } else {
+        SocialPost {
+            username: String::from("horse_ebooks"),
+            content: String::from(
+                "of course, as you probably already know, people",
+            ),
+            reply: false,
+            repost: false,
+        }
+    }
+}
+```
+
+### Validating References with Lifetimes
