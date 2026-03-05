@@ -1930,3 +1930,46 @@ fn returns_summarizable(switch: bool) -> impl Summary {
 ```
 
 ### Validating References with Lifetimes
+- lifetimes ensure that references are valid as long as we need them to be.
+- every reference in Rust has a lifetime - the scope for which that reference is valid.
+
+#### Dangling References
+- main aim of lifetimes is to prevent dangling references - they could cause a program to reference data other than the data it's intended to reference. example:
+```rust
+fn main() {
+    let r;
+
+    {
+        let x = 5;
+        r = &x;
+    }
+
+    println("r: {r}");
+}
+```
+- this code won't compile because r has gone out of scope before we try to use it. the error looks like this
+```rust
+$ cargo run
+   Compiling chapter10 v0.1.0 (file:///projects/chapter10)
+error[E0597]: `x` does not live long enough
+ --> src/main.rs:6:13
+  |
+5 |         let x = 5;
+  |             - binding `x` declared here
+6 |         r = &x;
+  |             ^^ borrowed value does not live long enough
+7 |     }
+  |     - `x` dropped here while still borrowed
+8 |
+9 |     println!("r: {r}");
+  |                   - borrow later used here
+
+For more information about this error, try `rustc --explain E0597`.
+error: could not compile `chapter10` (bin "chapter10") due to 1 previous error
+```
+- it says that variable x does not live long enough - the reason is that x will be out of scope when the inner scope ends
+- but r is still valid for the outer scope - its scope is larger - we can say it lives longer
+- if rust allowed this code to work, r would be referencing memory that was deallocated when x went out of scope
+- so how does Rust determine that this code is invalid? it uses a borrower checker
+
+#### The Borrower Checker
