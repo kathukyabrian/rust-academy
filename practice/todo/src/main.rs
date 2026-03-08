@@ -37,13 +37,15 @@ fn show_main_menu(){
    in this method, we expect to get the vector, get user input for task and add it to the vector should be mutable
  */
 fn add_task(tasks: &mut Vec<String>) {
+    decorate();
     println!("Add task:");
 
     let mut task = String::new();
     io::stdin().read_line(&mut task).unwrap();
 
     tasks.push(task.trim().to_string());
-    println!("Added task successfully");
+    println!("Added task: '{}' successfully", task.trim());
+    decorate();
 }
 
 fn show_tasks(tasks: &Vec<String>) {
